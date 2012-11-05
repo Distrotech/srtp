@@ -9,6 +9,7 @@
 # test		builds test applications
 # libcrypt.a	static library implementing crypto engine
 # libsrtp.a	static library implementing srtp
+# libsrtp.so	shared library implementing srtp
 # clean		removes objects, libs, and executables
 # distribution  cleans and builds a .tgz
 # tags          builds etags file from all .c and .h files
@@ -39,7 +40,7 @@ CPPFLAGS= @CPPFLAGS@
 CFLAGS	= @CFLAGS@
 LIBS	= @LIBS@
 LDFLAGS	= @LDFLAGS@ -L.
-COMPILE = $(CC) $(DEFS) $(INCDIR) $(CPPFLAGS) $(CFLAGS)
+COMPILE = $(CC) -fPIC $(DEFS) $(INCDIR) $(CPPFLAGS) $(CFLAGS)
 SRTPLIB	= -lsrtp
 
 RANLIB	= @RANLIB@
@@ -105,6 +106,9 @@ libsrtp.a: $(srtpobj) $(cryptobj) $(gdoi)
 	ar cr libsrtp.a $^
 	$(RANLIB) libsrtp.a
 
+libsrtp.so: $(srtpobj) $(cryptobj) $(gdoi)
+	$(CC) -shared -o libsrtp.so $^
+
 # libcryptomath.a contains general-purpose routines that are used to
 # generate tables and verify cryptoalgorithm implementations - this
 # library is not meant to be included in production code
@@ -127,7 +131,7 @@ testapp = $(crypto_testapp) test/srtp_driver$(EXE) test/replay_driver$(EXE) \
 	  test/roc_driver$(EXE) test/rdbx_driver$(EXE) test/rtpw$(EXE) \
 	  test/dtls_srtp_driver$(EXE)
 
-$(testapp): libsrtp.a
+$(testapp): libsrtp.a libsrtp.so
 
 test/rtpw$(EXE): test/rtpw.c test/rtp.c test/getopt_s.c
 	$(COMPILE) $(LDFLAGS) -o $@ $^ $(LIBS) $(SRTPLIB)
@@ -198,6 +202,7 @@ install:
 	cp $(srcdir)/crypto/include/*.h $(DESTDIR)$(includedir)/srtp
 	if [ "$(srcdir)" != "." ]; then cp crypto/include/*.h $(DESTDIR)$(includedir)/srtp; fi
 	if [ -f libsrtp.a ]; then cp libsrtp.a $(DESTDIR)$(libdir)/; fi
+	if [ -f libsrtp.so ]; then cp libsrtp.so $(DESTDIR)$(libdir)/; fi
 
 uninstall:
 	rm -f $(DESTDIR)$(includedir)/srtp/*.h
@@ -206,7 +211,7 @@ uninstall:
 
 clean:
 	rm -rf $(cryptobj) $(srtpobj) $(cryptomath) TAGS \
-        libcryptomath.a libsrtp.a core *.core test/core
+        libcryptomath.a libsrtp.a libsrtp.so core *.core test/core
 	for a in * */* */*/*; do			\
               if [ -f "$$a~" ] ; then rm -f $$a~; fi;	\
         done;
